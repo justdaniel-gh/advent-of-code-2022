@@ -71,9 +71,9 @@ fn solve2(groups: Vec<Group>) -> u32 {
             shared_first_second.sort();
             shared_first_second.dedup();
             let shared_third = shared_first_second
-            .into_iter()
-            .find(|&&fc| group.third.contains(&fc))
-            .unwrap();
+                .into_iter()
+                .find(|&&fc| group.third.contains(&fc))
+                .unwrap();
             let priority = match shared_third.is_ascii_lowercase() {
                 true => *shared_third as u32 - 96,
                 false => *shared_third as u32 - 64 + 26,
