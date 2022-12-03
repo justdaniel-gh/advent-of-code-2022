@@ -1,4 +1,4 @@
-use std::{fs, path::Path, env};
+use std::{fs, path::Path};
 
 fn load_puzzle<T, F: FnOnce(String) -> T>(puzzle_path: &Path, parser: F) -> T {
     parser(String::from_utf8(fs::read(puzzle_path).expect("Unable to open input!")).unwrap())
