@@ -34,7 +34,7 @@ impl<T> SliceExt for [T] {
                 let item1 = iter.nth(index1 - index0 - 1).unwrap();
                 (item0, item1)
             }
-            Ordering::Equal => panic!("[T]::get_two_mut(): received same index twice ({})", index0),
+            Ordering::Equal => panic!("[T]::get_two_mut(): received same index twice ({index0})"),
             Ordering::Greater => {
                 let mut iter = self.iter_mut();
                 let item1 = iter.nth(index1).unwrap();
