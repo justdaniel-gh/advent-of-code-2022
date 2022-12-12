@@ -2,151 +2,33 @@ use std::fmt;
 
 use take_until::TakeUntilExt;
 
-#[derive(Default)]
-struct GridCell {
-    value: i32,
+use utils::{Grid, Direction};
+
+#[derive(Default, Clone)]
+struct TreeCell {
+    height: i32,
     is_visible: bool,
     viewing_score: usize,
 }
 
-impl fmt::Display for GridCell {
+impl fmt::Display for TreeCell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{:>1}{} ",
-            self.value,
+            self.height,
             if self.is_visible { '*' } else { ' ' }
         )
     }
 }
-struct Grid {
-    cells: Vec<GridCell>,
-    num_rows: usize,
-    num_cols: usize,
-}
 
-impl Grid {
-    fn row(&self, row_num: usize) -> &[GridCell] {
-        &self.cells[row_num * self.num_cols..(row_num * self.num_cols) + self.num_cols]
-    }
-
-    fn row_mut(&mut self, row_num: usize) -> &mut [GridCell] {
-        &mut self.cells[row_num * self.num_cols..(row_num * self.num_cols) + self.num_cols]
-    }
-
-    #[allow(dead_code)]
-    fn col(&self, col_num: usize) -> Vec<&GridCell> {
-        let mut ret_cells: Vec<&GridCell> = Vec::new();
-        for cell in self.cells.iter().skip(col_num).step_by(self.num_cols) {
-            ret_cells.push(cell);
-        }
-        ret_cells
-    }
-    fn col_mut(&mut self, col_num: usize) -> Vec<&mut GridCell> {
-        let mut ret_cells: Vec<&mut GridCell> = Vec::new();
-        for cell in self.cells.iter_mut().skip(col_num).step_by(self.num_cols) {
-            ret_cells.push(cell);
-        }
-        ret_cells
-    }
-
-    fn get_coord(&self, x: usize, y: usize) -> Option<&GridCell> {
-        if x >= self.num_cols || y >= self.num_rows {
-            None
-        } else {
-            self.cells.get((y * self.num_cols) + x)
-        }
-    }
-
-    fn get_coord_mut(&mut self, x: usize, y: usize) -> Option<&mut GridCell> {
-        self.cells.get_mut((y * self.num_cols) + x)
-    }
-
-    #[allow(dead_code)]
-    fn row_iter(&self, direction: Direction) -> RowIter<'_> {
-        RowIter {
-            grid: self,
-            direction,
-            next_x: 0,
-            next_y: 0,
-        }
-    }
-
-    fn row_iter_at(&self, x: usize, y: usize, direction: Direction) -> RowIter<'_> {
-        RowIter {
-            grid: self,
-            direction,
-            next_x: x as isize,
-            next_y: y as isize,
-        }
-    }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut rows = String::new();
-
-        for row_ndx in 0..self.num_rows {
-            let row_str: String = self.row(row_ndx).iter().map(ToString::to_string).collect();
-            rows.push_str(&row_str);
-            rows.push('\n');
-        }
-
-        write!(f, "{rows}")
-    }
-}
-
-enum Direction {
-    North,
-    South,
-    East,
-    West,
-}
-
-struct RowIter<'a> {
-    grid: &'a Grid,
-    direction: Direction,
-    next_x: isize,
-    next_y: isize,
-}
-
-impl<'a> Iterator for RowIter<'a> {
-    type Item = &'a GridCell;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self
-            .grid
-            .get_coord(self.next_x as usize, self.next_y as usize)
-        {
-            Some(item) => {
-                match self.direction {
-                    Direction::North => {
-                        self.next_y -= 1;
-                    }
-                    Direction::South => {
-                        self.next_y += 1;
-                    }
-                    Direction::East => {
-                        self.next_x += 1;
-                    }
-                    Direction::West => {
-                        self.next_x -= 1;
-                    }
-                }
-                Some(item)
-            }
-            None => None,
-        }
-    }
-}
-
-fn parser(s: String) -> Grid {
+fn parser(s: String) -> Grid<TreeCell> {
     let mut num_rows = 0;
     let mut num_cols = 0;
-    let mut cells: Vec<GridCell> = vec![];
+    let mut cells: Vec<TreeCell> = vec![];
     for row in s.split('\n') {
-        cells.extend(row.chars().map(|v| GridCell {
-            value: v.to_digit(10).unwrap() as i32,
+        cells.extend(row.chars().map(|v| TreeCell {
+            height: v.to_digit(10).unwrap() as i32,
             is_visible: false,
             ..Default::default()
         }));
@@ -162,23 +44,23 @@ fn parser(s: String) -> Grid {
     }
 }
 
-fn solve(grid: &mut Grid) -> usize {
+fn solve(grid: &mut Grid<TreeCell>) -> usize {
     // Visible: iff all trees between it and an edge are < it
     for row_ndx in 1..grid.num_rows - 1 {
         let row = grid.row_mut(row_ndx);
         let mut left_max_height = -1;
         let mut right_max_height = -1;
         for cell in row.iter_mut() {
-            if cell.value > left_max_height {
+            if cell.height > left_max_height {
                 cell.is_visible = true;
-                left_max_height = cell.value;
+                left_max_height = cell.height;
             }
         }
         row.reverse();
         for cell in row.iter_mut() {
-            if cell.value > right_max_height {
+            if cell.height > right_max_height {
                 cell.is_visible = true;
-                right_max_height = cell.value;
+                right_max_height = cell.height;
             }
         }
         row.reverse(); // :eyes:
@@ -188,25 +70,25 @@ fn solve(grid: &mut Grid) -> usize {
         let mut left_max_height = -1;
         let mut right_max_height = -1;
         for cell in col.into_iter() {
-            if cell.value > left_max_height {
+            if cell.height > left_max_height {
                 cell.is_visible = true;
-                left_max_height = cell.value;
+                left_max_height = cell.height;
             }
         }
         let mut col = grid.col_mut(col_ndx);
         col.reverse();
         for cell in col.into_iter() {
-            if cell.value > right_max_height {
+            if cell.height > right_max_height {
                 cell.is_visible = true;
-                right_max_height = cell.value;
+                right_max_height = cell.height;
             }
         }
     }
     println!("{grid}");
-    grid.cells.iter().filter(|c| c.is_visible).count()
+    grid.iter().filter(|c| c.is_visible).count()
 }
 
-fn solve2(grid: &mut Grid) -> usize {
+fn solve2(grid: &mut Grid<TreeCell>) -> usize {
     // Edge trees have a 0 viewing score (0*X = 0) -- skip those
     // For each tree, calculate its viewing distance
     //  A(T) = N(T) * E(T) * W(T) * S(T)
@@ -216,24 +98,24 @@ fn solve2(grid: &mut Grid) -> usize {
             let cell = grid.get_coord(x, y).unwrap();
             if cell.is_visible {
                 let north_value = grid
-                    .row_iter_at(x, y, Direction::North)
+                    .direction_iter_at(x, y, Direction::North)
                     .skip(1)
-                    .take_until(|&c| c.value >= cell.value)
+                    .take_until(|&c| c.height >= cell.height)
                     .count();
                 let south_value = grid
-                    .row_iter_at(x, y, Direction::South)
+                    .direction_iter_at(x, y, Direction::South)
                     .skip(1)
-                    .take_until(|&c| c.value >= cell.value)
+                    .take_until(|&c| c.height >= cell.height)
                     .count();
                 let east_value = grid
-                    .row_iter_at(x, y, Direction::East)
+                    .direction_iter_at(x, y, Direction::East)
                     .skip(1)
-                    .take_until(|&c| c.value >= cell.value)
+                    .take_until(|&c| c.height >= cell.height)
                     .count();
                 let west_value = grid
-                    .row_iter_at(x, y, Direction::West)
+                    .direction_iter_at(x, y, Direction::West)
                     .skip(1)
-                    .take_until(|&c| c.value >= cell.value)
+                    .take_until(|&c| c.height >= cell.height)
                     .count();
                 let cell = grid.get_coord_mut(y, x).unwrap();
                 cell.viewing_score = north_value * south_value * east_value * west_value;
