@@ -1,5 +1,3 @@
-use utils;
-
 struct Elf {
     id: usize,
     calories: u32,
@@ -11,7 +9,7 @@ fn parser(s: String) -> Vec<Elf> {
         .map(|(n, g)| Elf {
             id: n + 1,
             calories: g
-                .split("\n")
+                .split('\n')
                 .map(|line| line.parse::<u32>().unwrap())
                 .sum::<u32>(),
         })
@@ -25,7 +23,11 @@ fn solve(elves: Vec<Elf>) -> Elf {
 fn solve2(mut elves: Vec<Elf>) -> u32 {
     elves.sort_by_key(|e| e.calories);
     elves.reverse();
-    elves.drain(..3).collect::<Vec<Elf>>().iter().fold(0,|a: u32, e: &Elf| a + e.calories)
+    elves
+        .drain(..3)
+        .collect::<Vec<Elf>>()
+        .iter()
+        .fold(0, |a: u32, e: &Elf| a + e.calories)
 }
 
 fn main() {
@@ -39,8 +41,7 @@ fn main() {
     let elves = utils::load_puzzle_data(1, parser);
     let top_three_calories = solve2(elves);
     println!(
-        "Solution 2: Top three elves are carrying {} calories worth of food.",
-        top_three_calories
+        "Solution 2: Top three elves are carrying {top_three_calories} calories worth of food.",
     );
 }
 
