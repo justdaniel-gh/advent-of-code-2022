@@ -1,6 +1,3 @@
-
-use utils;
-
 struct RPSRound {
     me: char,
     them: char,
@@ -13,12 +10,12 @@ enum Result {
 }
 
 fn parser(s: String) -> Vec<RPSRound> {
-    s.split("\n")
+    s.split('\n')
         .map(|g| {
             let plays: Vec<&str> = g.splitn(2, ' ').collect();
             RPSRound {
-                them: plays[0].chars().nth(0).unwrap(),
-                me: plays[1].chars().nth(0).unwrap(),
+                them: plays[0].chars().next().unwrap(),
+                me: plays[1].chars().next().unwrap(),
             }
         })
         .collect()
@@ -54,7 +51,7 @@ fn solve(plays: Vec<RPSRound>) -> u32 {
             };
             match result {
                 Result::Win(e) => 6 + e,
-                Result::Lose(e) => 0 + e,
+                Result::Lose(e) => e,
                 Result::Tie(e) => 3 + e,
             }
         })
@@ -92,7 +89,7 @@ fn solve2(plays: Vec<RPSRound>) -> u32 {
             };
             match result {
                 Result::Win(e) => 6 + e,
-                Result::Lose(e) => 0 + e,
+                Result::Lose(e) => e,
                 Result::Tie(e) => 3 + e,
             }
         })
@@ -103,11 +100,11 @@ fn solve2(plays: Vec<RPSRound>) -> u32 {
 fn main() {
     let plays = utils::load_puzzle_data(2, parser);
     let score = solve(plays);
-    println!("Solution 1: Total score: {}", score);
-    
+    println!("Solution 1: Total score: {score}");
+
     let plays = utils::load_puzzle_data(2, parser);
     let score = solve2(plays);
-    println!("Solution 2: Total score: {}", score);
+    println!("Solution 2: Total score: {score}");
 }
 
 #[cfg(test)]
