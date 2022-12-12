@@ -17,7 +17,7 @@ struct PuzzleInput {
 fn parser(s: String) -> PuzzleInput {
     let (cargo_map, instructions) = s.split_once("\n\n").unwrap();
     let lines: Vec<Vec<char>> = cargo_map
-        .split_inclusive("\n")
+        .split_inclusive('\n')
         .map(|line| {
             line.chars()
                 .array_chunks::<4>()
