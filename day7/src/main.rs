@@ -27,7 +27,7 @@ fn parse_result(current_dir: &mut Directory, lines: &Vec<&str>, mut ndx: usize) 
                     // cd up
                     return ndx;
                 } else if &line[5..6] != "/" {
-                    // cd into dir
+                    // cd into directory
                     ndx = parse_result(
                         current_dir.directories.get_mut(&line[5..]).unwrap(),
                         lines,
