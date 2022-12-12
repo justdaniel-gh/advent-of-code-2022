@@ -1,7 +1,5 @@
 #![feature(iter_array_chunks)]
 
-use utils;
-
 struct Sack {
     first: Vec<char>,
     second: Vec<char>,
@@ -14,7 +12,7 @@ struct Group {
 }
 
 fn parser(s: String) -> Vec<Sack> {
-    s.split("\n")
+    s.split('\n')
         .map(|g| {
             let (first, second) = g.split_at(g.len() / 2);
             Sack {
@@ -26,10 +24,10 @@ fn parser(s: String) -> Vec<Sack> {
 }
 
 fn parser2(s: String) -> Vec<Group> {
-    s.split("\n")
+    s.split('\n')
         .array_chunks::<3>()
         .map(|g| Group {
-            first: g.get(0).unwrap().chars().collect(),
+            first: g.first().unwrap().chars().collect(),
             second: g.get(1).unwrap().chars().collect(),
             third: g.get(2).unwrap().chars().collect(),
         })
@@ -47,11 +45,11 @@ fn solve(sacks: Vec<Sack>) -> u32 {
                 .iter()
                 .find(|&fc| sack.second.contains(fc))
                 .unwrap();
-            let priority = match shared.is_ascii_lowercase() {
+            // priority
+            match shared.is_ascii_lowercase() {
                 true => *shared as u32 - 96,
                 false => *shared as u32 - 64 + 26,
-            };
-            priority
+            }
         })
         .collect();
     matching_items.iter().sum()
@@ -74,11 +72,11 @@ fn solve2(groups: Vec<Group>) -> u32 {
                 .into_iter()
                 .find(|&&fc| group.third.contains(&fc))
                 .unwrap();
-            let priority = match shared_third.is_ascii_lowercase() {
+            // priority
+            match shared_third.is_ascii_lowercase() {
                 true => *shared_third as u32 - 96,
                 false => *shared_third as u32 - 64 + 26,
-            };
-            priority
+            }
         })
         .collect();
     matching_items.iter().sum()
@@ -87,11 +85,11 @@ fn solve2(groups: Vec<Group>) -> u32 {
 fn main() {
     let sacks = utils::load_puzzle_data(3, parser);
     let priority_sum = solve(sacks);
-    println!("Solution 1: Total priority: {}", priority_sum);
+    println!("Solution 1: Total priority: {priority_sum}");
 
     let groups = utils::load_puzzle_data(3, parser2);
     let priority_sum = solve2(groups);
-    println!("Solution 1: Total priorities: {}", priority_sum);
+    println!("Solution 2: Total priorities: {priority_sum}");
 }
 
 #[cfg(test)]
