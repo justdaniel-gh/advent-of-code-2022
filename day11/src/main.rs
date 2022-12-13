@@ -119,7 +119,7 @@ fn parser(s: String) -> Vec<Monkey> {
             line.next();
             let items = line.next().unwrap().split_once(": ").unwrap().1.split(", ").map(|n| n.parse().unwrap()).collect();
             let operation_str_vec: Vec<_> = line.next().unwrap().split_once(": ").unwrap().1.split_once("= ").unwrap().1.split(' ').collect();
-            let op_val_1 = match operation_str_vec.get(0) {
+            let op_val_1 = match operation_str_vec.first() {
                 Some(&"old") => OperationValue::Old,
                 Some(&n) => OperationValue::Constant(n.parse().unwrap()),
                 _ => panic!("This should not happen")
@@ -129,9 +129,9 @@ fn parser(s: String) -> Vec<Monkey> {
                 Some(&n) => OperationValue::Constant(n.parse().unwrap()),
                 _ => panic!("This should not happen")
             };
-            let operation = match operation_str_vec.get(1).unwrap() {
-                &"*" => Operation::Mul((op_val_1, op_val_2)),
-                &"+" => Operation::Add((op_val_1, op_val_2)),
+            let operation = match *operation_str_vec.get(1).unwrap() {
+                "*" => Operation::Mul((op_val_1, op_val_2)),
+                "+" => Operation::Add((op_val_1, op_val_2)),
                 _ => panic!("This should not happen")
             };
             let test_value = line.next().unwrap().split(' ').last().unwrap().parse().unwrap();
