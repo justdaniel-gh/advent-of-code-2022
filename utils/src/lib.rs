@@ -52,18 +52,26 @@ impl<T> SliceExt for [T] {
     }
 }
 
-pub struct Grid<T> {
+pub trait Grid {
+    type Item;
+
+    fn get_coord(&self, x: usize, y: usize) -> Option<&Self::Item>;
+    fn get_coord_mut(&mut self, x: usize, y: usize) -> Option<&mut Self::Item>;
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct StaticGrid<T> {
     pub cells: Vec<T>,
     pub num_rows: usize,
     pub num_cols: usize,
 }
 
-impl<T> Grid<T>
+impl<T> StaticGrid<T>
 where
     T: Default + Clone,
 {
     pub fn new(num_rows: usize, num_cols: usize) -> Self {
-        Grid {
+        StaticGrid {
             cells: vec![Default::default(); num_rows * num_cols],
             num_rows,
             num_cols,
@@ -94,24 +102,17 @@ where
         ret_cells
     }
 
-    pub fn get_coord(&self, x: usize, y: usize) -> Option<&T> {
-        if x >= self.num_cols || y >= self.num_rows {
-            None
-        } else {
-            self.cells.get((y * self.num_cols) + x)
-        }
-    }
-
-    pub fn get_coord_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
-        self.cells.get_mut((y * self.num_cols) + x)
-    }
-
     pub fn iter(&self) -> core::slice::Iter<'_, T> {
         self.cells.iter()
     }
 
     /// Returns an iterator moving in the specified direction, starting at (returning first) the x,y coord
-    pub fn direction_iter_at(&self, x: usize, y: usize, direction: Direction) -> DirectionIter<'_, T> {
+    pub fn direction_iter_at(
+        &self,
+        x: usize,
+        y: usize,
+        direction: Direction,
+    ) -> DirectionIter<'_, T> {
         DirectionIter {
             grid: self,
             direction,
@@ -121,7 +122,23 @@ where
     }
 }
 
-impl<T> fmt::Display for Grid<T>
+impl<T> Grid for StaticGrid<T> {
+    type Item = T;
+
+    fn get_coord(&self, x: usize, y: usize) -> Option<&Self::Item> {
+        if x >= self.num_cols || y >= self.num_rows {
+            None
+        } else {
+            self.cells.get((y * self.num_cols) + x)
+        }
+    }
+
+    fn get_coord_mut(&mut self, x: usize, y: usize) -> Option<&mut Self::Item> {
+        self.cells.get_mut((y * self.num_cols) + x)
+    }
+}
+
+impl<T> fmt::Display for StaticGrid<T>
 where
     T: Display + Default + Clone,
 {
@@ -138,15 +155,20 @@ where
     }
 }
 
+#[derive(Debug)]
 pub enum Direction {
     North,
     South,
     East,
     West,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
 }
 
 pub struct DirectionIter<'a, T> {
-    grid: &'a Grid<T>,
+    grid: &'a dyn Grid<Item = T>,
     direction: Direction,
     next_x: isize,
     next_y: isize,
@@ -177,6 +199,22 @@ where
                     Direction::West => {
                         self.next_x -= 1;
                     }
+                    Direction::NorthEast => {
+                        self.next_x += 1;
+                        self.next_y -= 1;
+                    },
+                    Direction::NorthWest => {
+                        self.next_x -= 1;
+                        self.next_y -= 1;
+                    },
+                    Direction::SouthEast => {
+                        self.next_x += 1;
+                        self.next_y += 1;
+                    },
+                    Direction::SouthWest =>{
+                        self.next_x -= 1;
+                        self.next_y += 1;
+                    },
                 }
                 Some(item)
             }
@@ -185,18 +223,156 @@ where
     }
 }
 
+pub struct DynamicGrid<T> {
+    // [y][x]
+    //     -|
+    //  -   |    +
+    //  ----------
+    //      |
+    //     +|
+    cells: Vec<Vec<T>>,
+    center_x: isize,
+    center_y: isize,
+    num_rows: usize,
+    num_cols: usize,
+}
+
+/*
+Add a new negative column
+
+
+*/
+impl<T> DynamicGrid<T>
+where
+    T: Default + Clone,
+{
+    /// Starts as a single cell
+    pub fn new() -> Self {
+        DynamicGrid {
+            cells: vec![vec![Default::default()]],
+            center_x: 0,
+            center_y: 0,
+            num_cols: 1,
+            num_rows: 1,
+        }
+    }
+    //fn add_cell
+
+    fn cols(&self) -> usize {
+        self.num_cols
+    }
+
+    pub fn row(&self, row_ndx: usize) -> &[T] {
+        &self.cells[row_ndx]
+    }
+
+    fn rel_to_abs(&mut self, rel_x: isize, rel_y: isize) -> (usize, usize) {
+        let mut abs_y = self.center_y + rel_y;
+        if abs_y < 0 {
+            abs_y = abs_y.abs();
+            self.center_y += abs_y;
+            for _ in 0..abs_y {
+                self.cells
+                    .insert(0, vec![Default::default(); self.num_cols]);
+                self.num_rows += 1;
+            }
+        } else if abs_y >= self.num_rows as isize {
+            let diff_y = self.num_rows as isize - abs_y + 1;
+            for _ in 0..diff_y {
+                self.cells.push(vec![Default::default(); self.num_cols]);
+                self.num_rows += 1;
+            }
+        };
+
+        let mut abs_x = self.center_x + rel_x;
+        if abs_x < 0 {
+            abs_x = abs_x.abs();
+            self.center_x += abs_x;
+            for _ in 0..abs_x {
+                for c in self.cells.iter_mut() {
+                    c.insert(0, Default::default());
+                }
+                self.num_cols += 1;
+            }
+        } else if abs_x >= self.num_cols as isize {
+            let diff_x = self.num_cols as isize - abs_x + 1;
+            for _ in 0..diff_x {
+                for c in self.cells.iter_mut() {
+                    c.push(Default::default());
+                }
+                self.num_cols += 1;
+            }
+        };
+        let abs_y = self.center_y + rel_y;
+        let abs_x = self.center_x + rel_x;
+        (abs_x as usize, abs_y as usize)
+    }
+
+    pub fn get_cell_at(&mut self, rel_x: isize, rel_y: isize) -> &T {
+        let (abs_x, abs_y) = self.rel_to_abs(rel_x, rel_y);
+        self.cells.get(abs_y).unwrap().get(abs_x).unwrap()
+    }
+
+    pub fn get_cell_at_mut(&mut self, rel_x: isize, rel_y: isize) -> &mut T {
+        let (abs_x, abs_y) = self.rel_to_abs(rel_x, rel_y);
+        self.cells.get_mut(abs_y).unwrap().get_mut(abs_x).unwrap()
+    }
+
+    pub fn direction_iter_mut(&mut self, _direction: Direction, _amount: usize) {
+        todo!()
+    }
+
+    pub fn cell_iter(&mut self) -> std::iter::Flatten<std::slice::Iter<'_, Vec<T>>> {
+        self.cells.iter().flatten()
+    }
+}
+
+impl<T> Default for DynamicGrid<T>
+where
+    T: Display + Default + Clone,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> fmt::Display for DynamicGrid<T>
+where
+    T: Display + Default + Clone,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut rows = String::new();
+
+        for row_ndx in 0..self.num_rows {
+            let row_str: String = self.row(row_ndx).iter().map(ToString::to_string).collect();
+            rows.push_str(&row_str);
+            rows.push('\n');
+        }
+
+        write!(f, "{rows}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::Grid;
+    use std::fmt;
+
+    use crate::{DynamicGrid, StaticGrid};
 
     #[derive(Debug, Default, Clone)]
     struct TestCell {
         value: u32,
     }
 
+    impl fmt::Display for TestCell {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{:>1}", self.value)
+        }
+    }
+
     #[test]
     fn test_grid() {
-        let mut g: Grid<TestCell> = Grid::new(2, 2);
+        let mut g: StaticGrid<TestCell> = StaticGrid::new(2, 2);
         assert_eq!(g.num_cols, 2);
         assert_eq!(g.num_rows, 2);
         assert_eq!(g.cells.len(), 4);
@@ -205,8 +381,43 @@ mod tests {
             c.value = 1;
         }
 
-        let mut i = g.direction_iter_at(0,0,crate::Direction::East);
+        let mut i = g.direction_iter_at(0, 0, crate::Direction::East);
         assert_eq!(i.next().unwrap().value, 1);
         assert_eq!(i.next().unwrap().value, 1);
+    }
+
+    #[test]
+    fn test_dynamic_grid() {
+        let mut g: DynamicGrid<TestCell> = DynamicGrid::new();
+        assert_eq!(g.num_cols, 1);
+        assert_eq!(g.num_rows, 1);
+        assert_eq!(g.cells.len(), 1);
+
+        let c = g.get_cell_at_mut(1, 1);
+        c.value = 1;
+        assert_eq!(c.value, 1);
+
+        print!("{g}");
+        assert_eq!(g.num_cols, 2);
+        assert_eq!(g.num_rows, 2);
+
+        // 2101
+        let c = g.get_cell_at_mut(-2, -2);
+        c.value = 1;
+
+        assert_eq!(c.value, 1);
+
+        print!("{g}");
+        assert_eq!(g.num_cols, 4);
+        assert_eq!(g.num_rows, 4);
+
+        let c = g.get_cell_at_mut(-3, -2);
+        c.value = 1;
+
+        assert_eq!(c.value, 1);
+
+        print!("{g}");
+        assert_eq!(g.num_cols, 5);
+        assert_eq!(g.num_rows, 4);
     }
 }
