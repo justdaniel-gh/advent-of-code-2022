@@ -1,8 +1,7 @@
 use std::fmt;
 
 use take_until::TakeUntilExt;
-
-use utils::{Grid, Direction};
+use utils::{StaticGrid, Direction, Grid};
 
 #[derive(Default, Clone)]
 struct TreeCell {
@@ -22,7 +21,7 @@ impl fmt::Display for TreeCell {
     }
 }
 
-fn parser(s: String) -> Grid<TreeCell> {
+fn parser(s: String) -> StaticGrid<TreeCell> {
     let mut num_rows = 0;
     let mut num_cols = 0;
     let mut cells: Vec<TreeCell> = vec![];
@@ -37,14 +36,14 @@ fn parser(s: String) -> Grid<TreeCell> {
         }
         num_rows += 1;
     }
-    Grid {
+    StaticGrid {
         cells,
         num_rows,
         num_cols,
     }
 }
 
-fn solve(grid: &mut Grid<TreeCell>) -> usize {
+fn solve(grid: &mut StaticGrid<TreeCell>) -> usize {
     // Visible: iff all trees between it and an edge are < it
     for row_ndx in 1..grid.num_rows - 1 {
         let row = grid.row_mut(row_ndx);
@@ -88,7 +87,7 @@ fn solve(grid: &mut Grid<TreeCell>) -> usize {
     grid.iter().filter(|c| c.is_visible).count()
 }
 
-fn solve2(grid: &mut Grid<TreeCell>) -> usize {
+fn solve2(grid: &mut StaticGrid<TreeCell>) -> usize {
     // Edge trees have a 0 viewing score (0*X = 0) -- skip those
     // For each tree, calculate its viewing distance
     //  A(T) = N(T) * E(T) * W(T) * S(T)
