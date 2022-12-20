@@ -174,7 +174,7 @@ impl Rope {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct RopeCell {
     tail_visited: bool,
     head_visited: bool,
@@ -183,12 +183,6 @@ struct RopeCell {
 impl fmt::Display for RopeCell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:>1} ", if self.tail_visited { '#' } else { '.' })
-    }
-}
-
-impl Default for RopeCell {
-    fn default() -> Self {
-        Self { tail_visited: Default::default(), head_visited: Default::default() }
     }
 }
 
