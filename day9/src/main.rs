@@ -3,7 +3,7 @@ use std::{fmt, ops::Sub};
 
 use vector2d::Vector2D;
 
-use utils::{Direction, DynamicGrid, SliceExt};
+use utils::{Direction, DynamicGrid, SliceExt, Grid};
 
 struct Instruction {
     direction: Direction,
@@ -19,8 +19,8 @@ type Point = Vector2D<isize>;
 
 impl Rope {
     pub fn new(num_knots: usize) -> Self {
-        let mut g = DynamicGrid::<RopeCell>::new();
-        let c = g.get_cell_at_mut(0, 0);
+        let mut g = DynamicGrid::<RopeCell>::new(0,0);
+        let c = g.get_cell_mut(0, 0).unwrap();
         c.tail_visited = true;
         Rope {
             knots: vec![Vector2D { x: 0, y: 0 }; num_knots],
@@ -88,12 +88,12 @@ impl Rope {
                     head.x -= 1;
                 }
             }
-            let c = self.grid.get_cell_at_mut(head.x, head.y);
+            let c = self.grid.get_cell_mut(head.x, head.y).unwrap();
             c.head_visited = true;
             for ndx in 0..self.knots.len()-1 {
                 self.move_knot(ndx+1, ndx);
             }
-            let c = self.grid.get_cell_at_mut(self.knots.last().unwrap().x, self.knots.last().unwrap().y);
+            let c = self.grid.get_cell_mut(self.knots.last().unwrap().x, self.knots.last().unwrap().y).unwrap();
             c.tail_visited = true;
         }
     }
@@ -174,7 +174,7 @@ impl Rope {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 struct RopeCell {
     tail_visited: bool,
     head_visited: bool,
@@ -183,6 +183,12 @@ struct RopeCell {
 impl fmt::Display for RopeCell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:>1} ", if self.tail_visited { '#' } else { '.' })
+    }
+}
+
+impl Default for RopeCell {
+    fn default() -> Self {
+        Self { tail_visited: Default::default(), head_visited: Default::default() }
     }
 }
 
