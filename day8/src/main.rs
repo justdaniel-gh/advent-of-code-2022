@@ -84,7 +84,7 @@ fn solve(grid: &mut StaticGrid<TreeCell>) -> usize {
         }
     }
     println!("{grid}");
-    grid.iter().filter(|c| c.is_visible).count()
+    grid.cell_iter().filter(|c| c.is_visible).count()
 }
 
 fn solve2(grid: &mut StaticGrid<TreeCell>) -> usize {
@@ -92,9 +92,9 @@ fn solve2(grid: &mut StaticGrid<TreeCell>) -> usize {
     // For each tree, calculate its viewing distance
     //  A(T) = N(T) * E(T) * W(T) * S(T)
     let mut max_value = 0;
-    for y in 1..grid.num_rows - 1 {
-        for x in 1..grid.num_cols - 1 {
-            let cell = grid.get_coord(x, y).unwrap();
+    for y in 1..grid.num_rows as isize - 1 {
+        for x in 1..grid.num_cols as isize - 1 {
+            let cell = grid.get_cell(x, y).unwrap();
             if cell.is_visible {
                 let north_value = grid
                     .direction_iter_at(x, y, Direction::North)
@@ -116,7 +116,7 @@ fn solve2(grid: &mut StaticGrid<TreeCell>) -> usize {
                     .skip(1)
                     .take_until(|&c| c.height >= cell.height)
                     .count();
-                let cell = grid.get_coord_mut(y, x).unwrap();
+                let cell = grid.get_cell_mut(y, x).unwrap();
                 cell.viewing_score = north_value * south_value * east_value * west_value;
                 if cell.viewing_score > max_value {
                     max_value = cell.viewing_score;
