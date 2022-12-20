@@ -12,8 +12,8 @@ struct Board {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default, Copy)]
 struct Pos {
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
     height: usize,
 }
 
@@ -37,8 +37,8 @@ fn parser(s: String) -> Board {
                 e => (e - 96) as usize, // 1-26
             };
             let p = Pos {
-                x: c_ndx,
-                y: row_ndx,
+                x: c_ndx as isize,
+                y: row_ndx as isize,
                 height,
             };
             match v {
