@@ -52,7 +52,7 @@ impl Cpu {
         if (self.x_register..self.x_register + 3).contains(&((self.cycles % 40) as isize)) {
             let c = self
                 .display
-                .get_coord_mut(self.cycles % 40, self.cycles / 40)
+                .get_cell_mut(self.cycles as isize % 40, self.cycles as isize / 40)
                 .unwrap();
             c.value = '#';
         }
