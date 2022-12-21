@@ -637,7 +637,7 @@ pub struct Point {
 mod tests {
     use std::fmt::Display;
 
-    use crate::{DynamicGrid, GrowableGrid, StaticGrid, Growable};
+    use crate::{DynamicGrid, StaticGrid, Growable};
 
     /*
     Test Structs
