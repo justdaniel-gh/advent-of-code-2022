@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use utils::{Direction, DynamicGrid, Grid, GrowableGrid, Point};
+use utils::{Direction, DynamicGrid, Grid, Point, Growable};
 
 struct Cave<CellType> {
     grid: DynamicGrid<CellType>,

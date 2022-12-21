@@ -60,14 +60,21 @@ pub trait Grid {
 
     fn get_cell(&self, x: isize, y: isize) -> Option<&Self::Item>;
     fn get_cell_mut(&mut self, x: isize, y: isize) -> Option<&mut Self::Item>;
+
+    fn first_cell_coord(&self) -> (isize, isize);
+    fn last_cell_coord(&self) -> (isize, isize);
+
+    fn get_row(&self, y: isize) -> Option<&[Self::Item]>;
 }
 
-pub trait GrowableGrid {
+pub trait Growable {
     type Item;
 
     fn get_cell_or_add(&mut self, x: isize, y: isize) -> &Self::Item;
     fn get_cell_or_add_mut(&mut self, x: isize, y: isize) -> &mut Self::Item;
 }
+
+pub trait GrowableGrid<T>: Growable<Item = T> + Grid<Item = T> {}
 
 #[derive(Debug, Default, Clone)]
 pub struct StaticGrid<T> {
@@ -132,7 +139,10 @@ where
     }
 }
 
-impl<T> Grid for StaticGrid<T> {
+impl<T> Grid for StaticGrid<T> 
+where
+    T: Default + Clone,
+{
     type Item = T;
 
     fn get_cell(&self, x: isize, y: isize) -> Option<&Self::Item> {
@@ -146,6 +156,18 @@ impl<T> Grid for StaticGrid<T> {
     fn get_cell_mut(&mut self, x: isize, y: isize) -> Option<&mut Self::Item> {
         self.cells
             .get_mut((y as usize * self.num_cols) + x as usize)
+    }
+
+    fn first_cell_coord(&self) -> (isize, isize) {
+        (0, 0)
+    }
+
+    fn last_cell_coord(&self) -> (isize, isize) {
+        (self.num_cols as isize - 1, self.num_rows as isize - 1)
+    }
+
+    fn get_row(&self, y: isize) -> Option<&[Self::Item]> {
+        Some(self.row(y as usize))
     }
 }
 
@@ -237,29 +259,12 @@ where
     }
 }
 
-/*
-struct DirectionIterMut<'a, T>
+pub struct DirectionIterMut<'a, T>
 {
     grid: &'a mut dyn Grid<Item = T>,
     direction: Direction,
-    current: &'a mut [T],
     next_x: isize,
     next_y: isize,
-}
-
-impl<'a, T> Default for DirectionIterMut<'a, T>
-where
-    T: Default + Clone,
-{
-    fn default() -> Self {
-        DirectionIterMut {
-            grid: todo!(),
-            direction: todo!(),
-            current: None,
-            next_x: todo!(),
-            next_y: todo!(),
-        }
-    }
 }
 
 impl<'a, T> Iterator for DirectionIterMut<'a, T>
@@ -302,14 +307,62 @@ where
                     }
                 }
 
-                self.current = item;
-                Some(self.current.unwrap().as_mut())
+                unsafe {
+                    Some(&mut *(item as *mut T))
+                }
             }
             None => None,
         }
     }
 }
- */
+
+pub struct SubGridIterMut<'a, T>
+{
+    grid: &'a mut dyn GrowableGrid<T>,
+    start_x: isize,
+    start_y: isize,
+    end_x: isize,
+    end_y: isize,
+    ndx: isize,
+}
+
+/// Iterate over all cells within a SubGrid of an existing grid
+/// Expands underlying grid to meet size
+impl<'a, T> SubGridIterMut<'a, T> {
+    pub fn new(grid: &'a mut dyn GrowableGrid<T>, start_x: isize, start_y: isize, end_x: isize, end_y: isize) -> Self {
+        println!("first: {:?} - last: {:?}", grid.first_cell_coord(), grid.last_cell_coord());
+        grid.get_cell_or_add(start_x, start_y);
+        grid.get_cell_or_add(end_x, end_y);
+        println!("first: {:?} - last: {:?}", grid.first_cell_coord(), grid.last_cell_coord());
+        println!("New sub grid: {start_x},{start_y} - {end_x},{end_y}");
+        SubGridIterMut {
+            grid,
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            ndx: 0,
+        }
+    }
+}
+
+impl<'a, T> Iterator for SubGridIterMut<'a, T>
+where
+    T: Default + Clone,
+{
+    type Item = (&'a mut T, (isize, isize));
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_x = self.start_x + (self.ndx % (self.end_x - self.start_x + 1));
+        let next_y = self.start_y + (self.ndx / (self.end_x - self.start_x + 1));
+        if next_y > self.end_y {
+            return None;
+        }
+        //println!("{}: {next_x},{next_y}", self.ndx);
+        self.ndx += 1;
+        self.grid.get_cell_mut(next_x, next_y).map(|item| unsafe { (&mut *(item as *mut T), (next_x, next_y)) })
+    }
+}
 
 pub struct DynamicGrid<CellType> {
     // [y][x]
@@ -364,6 +417,16 @@ where
     pub fn cell_iter(&self) -> std::iter::Flatten<std::slice::Iter<'_, Vec<CellType>>>
     {
         self.cells.iter().flatten()
+    }
+
+    pub fn row_iter(&self) -> std::slice::Iter<'_, Vec<CellType>>
+    {
+        self.cells.iter()
+    }
+
+    pub fn sub_grid_iter_mut(&mut self, start_x: isize, start_y: isize, end_x: isize, end_y: isize) -> SubGridIterMut<'_, CellType>
+    {
+        SubGridIterMut::new(self, start_x, start_y, end_x, end_y)
     }
 
     // Translate coordinate to local coordinate system
@@ -429,14 +492,6 @@ where
             }
         }
     }
-
-    pub fn first_cell_coord(&self) -> (isize, isize) {
-        (0 - self.center_x as isize + self.start_x, 0 - self.center_y as isize + self.start_y)
-    }
-
-    pub fn last_cell_coord(&self) -> (isize, isize) {
-        (self.num_cols as isize - 1 - self.center_x as isize + self.start_x, self.num_rows as isize - 1 - self.center_y as isize + self.start_y)
-    }
 }
 
 impl<CellType> Grid for DynamicGrid<CellType>
@@ -476,9 +531,22 @@ where
             None
         }
     }
+
+    fn first_cell_coord(&self) -> (isize, isize) {
+        (0 - self.center_x as isize + self.start_x, 0 - self.center_y as isize + self.start_y)
+    }
+
+    fn last_cell_coord(&self) -> (isize, isize) {
+        (self.num_cols as isize - 1 - self.center_x as isize + self.start_x, self.num_rows as isize - 1 - self.center_y as isize + self.start_y)
+    }
+
+    fn get_row(&self, y: isize) -> Option<&[Self::Item]> {
+        let y_ndx = self.translate_local_to_indices(0, self.translate_absolute_to_local(0, y).1).1;
+        Some(self.cells[y_ndx as usize].as_slice())
+    }
 }
 
-impl<CellType> GrowableGrid for DynamicGrid<CellType>
+impl<CellType> Growable for DynamicGrid<CellType>
 where
     CellType: Default + Clone,
 {
@@ -518,6 +586,11 @@ where
             .unwrap()
     }
 }
+
+impl<CellType> GrowableGrid<CellType> for DynamicGrid<CellType> 
+where
+    CellType: Default + Clone,
+{}
 
 impl<CellType> Default for DynamicGrid<CellType>
 where
@@ -564,7 +637,7 @@ pub struct Point {
 mod tests {
     use std::fmt::Display;
 
-    use crate::{DynamicGrid, GrowableGrid, StaticGrid};
+    use crate::{DynamicGrid, GrowableGrid, StaticGrid, Growable};
 
     /*
     Test Structs
